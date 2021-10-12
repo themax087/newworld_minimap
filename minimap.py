@@ -1,5 +1,4 @@
 import re
-import time
 from pathlib import Path
 
 import cv2
@@ -8,8 +7,10 @@ import pytesseract
 from PIL import ImageGrab
 from playwright.sync_api import sync_playwright
 
-VIEWPORT_SIZE = {"width": 300, "height": 350}
+VIEWPORT_SIZE = {"width": 800, "height": 850}
 POSITION_COORDINATES = [1652, 19, 1920, 35]
+CENTER_X = VIEWPORT_SIZE["width"] / 2
+CENTER_Y = VIEWPORT_SIZE["height"] / 2
 
 TESSERACT_PATH = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -29,6 +30,23 @@ def is_close_to_any_of_lasts(lng, lat):
     for olng, olat in LAST_COORDINATES:
         if abs(lng - olng) < 100 and abs(lat - olat) < 100:
             return True
+
+
+def center(pg):
+    locator = pg.locator('//img[contains(@class, "leaflet-marker-icon")]')
+    if locator.is_visible():
+        box = locator.element_handle().bounding_box()
+        x, y = box['x'], box['y']
+        if abs(x - CENTER_X) > CENTER_X / 4:
+            if x < CENTER_X:
+                pg.keyboard.press("ArrowLeft")
+            else:
+                pg.keyboard.press("ArrowRight")
+        if abs(y - CENTER_Y) > CENTER_Y / 4:
+            if y < CENTER_Y:
+                pg.keyboard.press("ArrowUp")
+            else:
+                pg.keyboard.press("ArrowDown")
 
 
 with sync_playwright() as p:
@@ -65,5 +83,5 @@ with sync_playwright() as p:
                 if LAST_COORDINATES[-1] == LAST_COORDINATES[-2]:
                     continue
                 page.goto(url=MAP_WITH_COORDINATES_URL.format(lat=lat, lng=lng))
-
-        time.sleep(1)
+                page.wait_for_load_state("domcontentloaded")
+                center(page)
